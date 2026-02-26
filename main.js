@@ -73,7 +73,35 @@ function init() {
 
     loader.load('/models3d/ready_player_me_female_character.glb', function (gltf) {
         passengerModel = gltf.scene;
-        passengerModel.position.set(-0.5, 0.2, 0.2);
+
+        // Przesunięcie na prawy fotel pasażera (X na plus), podniesiona na wysokość siedzenia (Y), i wsunięta w fotel (Z)
+        passengerModel.position.set(0.6, 0.45, -0.1);
+
+        // Obrót postaci, aby patrzyła w stronę przedniej szyby
+        passengerModel.rotation.y = Math.PI;
+
+        // Ręczny hack szkieletowy, by posadzić zrigowany model (Ready Player Me zachowuje standardowe nazewnictwo kości Mixamo)
+        passengerModel.traverse((child) => {
+            if (child.isBone) {
+                // Zgięcie bioder (uda w górę do przodu)
+                if (child.name.includes('UpLeg')) {
+                    child.rotation.x -= Math.PI / 2;
+                }
+                // Zgięcie kolan (łydki w dół)
+                if (child.name.includes('Leg') && !child.name.includes('Up')) {
+                    child.rotation.x += Math.PI / 2;
+                }
+                // Opadnięcie ramion wzdłuż tułowia w pozycji siedzącej
+                if (child.name.includes('Arm')) {
+                    child.rotation.z += Math.PI / 6;
+                }
+                // Dłonie na kolanach
+                if (child.name.includes('ForeArm')) {
+                    child.rotation.x -= Math.PI / 4;
+                }
+            }
+        });
+
         carGroup.add(passengerModel);
         setupAudio(passengerModel);
     }, undefined, function (e) {

@@ -42,6 +42,10 @@ function init() {
     renderer.xr.enabled = true;
     container.appendChild(renderer.domElement);
 
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.target.set(0, 1.2, -1);
+    controls.update();
+
     document.body.appendChild(VRButton.createButton(renderer));
 
     const loadingManager = new THREE.LoadingManager();

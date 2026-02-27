@@ -6,37 +6,21 @@ import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
 import { TGALoader } from 'three/examples/jsm/loaders/TGALoader.js';
 import GUI from 'lil-gui';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { guiSettings } from './src/config/SceneConfig.js';
+import { createTherapistGUI } from './src/ui/UIManager.js';
+import { initAudio, setupPassengerAudio, triggerTinnitus, stopTinnitus, isTinnitusActive } from './src/audio/AudioManager.js';
 
 let camera, scene, renderer;
 let carGroup, passengerModel, carModel, roadModel, incomingCarGroup;
 let grid;
 let clock = new THREE.Clock();
 let mixer;
-let audioListenerGlobal;
 let scenarioTimer = 0;
-let tinnitusActive = false;
-let currentTinnitusOsc = null;
-let currentTinnitusGain = null;
 const speed = 15;
 
-const guiSettings = {
-    carX: 1.4, carY: -1, carZ: -3.28, carScale: 0.03,
-    carRotX: 1.598407, carRotY: 3.141592, carRotZ: -0.00159,
-    passX: -0.16, passY: -0.78, passZ: 0.94, passScale: 1.15,
-    passRotX: 0, passRotY: 3.141592, passRotZ: 0,
-    roadX: -16.2, roadY: 2, roadZ: 0, roadScale: 3,
-    roadRotX: -0.02159, roadRotY: 1.598407, roadRotZ: 0,
-    userX: -1, userY: -0.23, userZ: 0.82,
-    showUserSpawn: false, // Turned off by default so the red sphere does not obstruct patient view
-    showLabels: false,
-    incStartX: 20, incStartY: -1.5, incStartZ: -60, incRotY: -0.785, incScale: 0.03,
-    incStartTime: 10.0, incSpeedX: -17.5, incSpeedZ: 25, crashThresholdX: 1.0,
-    playScenario: true,
-    scenarioSpeed: 1.0,
-    resetScenario: () => {
-        scenarioTimer = 0;
-        if (tinnitusActive) stopTinnitus();
-    }
+guiSettings.resetScenario = () => {
+    scenarioTimer = 0;
+    if (isTinnitusActive()) stopTinnitus();
 };
 
 init();
@@ -67,8 +51,7 @@ function init() {
     userSpawnHelper.visible = guiSettings.showUserSpawn;
     carGroup.add(userSpawnHelper);
 
-    audioListenerGlobal = new THREE.AudioListener();
-    camera.add(audioListenerGlobal);
+    initAudio(camera);
 
     incomingCarGroup = new THREE.Group();
     incomingCarGroup.position.set(50, 0, -100); // Hidden / far away initially
@@ -137,7 +120,7 @@ function init() {
         passengerModel.scale.setScalar(guiSettings.passScale);
 
         carGroup.add(passengerModel);
-        setupAudio(passengerModel);
+        setupPassengerAudio(passengerModel);
 
         if (gltf.animations && gltf.animations.length > 0) {
             mixer = new THREE.AnimationMixer(passengerModel);
@@ -193,65 +176,9 @@ function init() {
 
     window.addEventListener('resize', onWindowResize);
 
-    // GUI Setup
-    const gui = new GUI();
-    const carFolder = gui.addFolder('Car (Mercedes)');
-    carFolder.add(guiSettings, 'carX', -10, 10, 0.01).onChange(v => { if (carModel) carModel.position.x = v; });
-    carFolder.add(guiSettings, 'carY', -10, 10, 0.01).onChange(v => { if (carModel) carModel.position.y = v; });
-    carFolder.add(guiSettings, 'carZ', -10, 10, 0.01).onChange(v => { if (carModel) carModel.position.z = v; });
-    carFolder.add(guiSettings, 'carRotX', -Math.PI, Math.PI, 0.01).onChange(v => { if (carModel) carModel.rotation.x = v; });
-    carFolder.add(guiSettings, 'carRotY', -Math.PI, Math.PI, 0.01).onChange(v => { if (carModel) carModel.rotation.y = v; });
-    carFolder.add(guiSettings, 'carRotZ', -Math.PI, Math.PI, 0.01).onChange(v => { if (carModel) carModel.rotation.z = v; });
-    carFolder.add(guiSettings, 'carScale', 0.001, 2, 0.001).onChange(v => { if (carModel) carModel.scale.setScalar(v); });
-
-    const passFolder = gui.addFolder('Passenger');
-    passFolder.add(guiSettings, 'passX', -5, 5, 0.01).onChange(v => { if (passengerModel) passengerModel.position.x = v; });
-    passFolder.add(guiSettings, 'passY', -5, 5, 0.01).onChange(v => { if (passengerModel) passengerModel.position.y = v; });
-    passFolder.add(guiSettings, 'passZ', -5, 5, 0.01).onChange(v => { if (passengerModel) passengerModel.position.z = v; });
-    passFolder.add(guiSettings, 'passRotX', -Math.PI, Math.PI, 0.01).onChange(v => { if (passengerModel) passengerModel.rotation.x = v; });
-    passFolder.add(guiSettings, 'passRotY', -Math.PI, Math.PI, 0.01).onChange(v => { if (passengerModel) passengerModel.rotation.y = v; });
-    passFolder.add(guiSettings, 'passRotZ', -Math.PI, Math.PI, 0.01).onChange(v => { if (passengerModel) passengerModel.rotation.z = v; });
-    passFolder.add(guiSettings, 'passScale', 0.1, 5, 0.01).onChange(v => { if (passengerModel) passengerModel.scale.setScalar(v); });
-
-    const roadFolder = gui.addFolder('Road/Environment');
-    roadFolder.add(guiSettings, 'roadX', -500, 500, 0.1).onChange(v => { if (roadModel) roadModel.position.x = v; });
-    roadFolder.add(guiSettings, 'roadY', -100, 100, 0.1).onChange(v => { if (roadModel) roadModel.position.y = v; });
-    roadFolder.add(guiSettings, 'roadZ', -1000, 1000, 0.1).onChange(v => { if (roadModel) roadModel.position.z = v; });
-    roadFolder.add(guiSettings, 'roadRotX', -Math.PI, Math.PI, 0.01).onChange(v => { if (roadModel) roadModel.rotation.x = v; });
-    roadFolder.add(guiSettings, 'roadRotY', -Math.PI, Math.PI, 0.01).onChange(v => { if (roadModel) roadModel.rotation.y = v; });
-    roadFolder.add(guiSettings, 'roadRotZ', -Math.PI, Math.PI, 0.01).onChange(v => { if (roadModel) roadModel.rotation.z = v; });
-    roadFolder.add(guiSettings, 'roadScale', 0.001, 20, 0.001).onChange(v => { if (roadModel) roadModel.scale.setScalar(v); });
-
-    const toolsFolder = gui.addFolder('Developer Tools');
-    toolsFolder.add(guiSettings, 'showLabels').name('Show Mesh Names').onChange(v => {
-        if (roadModel) {
-            roadModel.traverse(child => {
-                if (child.name === "DebugLabel") child.visible = v;
-            });
-        }
-    });
-
-    const userFolder = gui.addFolder('User (Driver) Spawn');
-    userFolder.add(guiSettings, 'userX', -5, 5, 0.01).onChange(v => { cameraRig.position.x = v; if (userSpawnHelper) userSpawnHelper.position.x = v; });
-    userFolder.add(guiSettings, 'userY', -5, 5, 0.01).onChange(v => { cameraRig.position.y = v; if (userSpawnHelper) userSpawnHelper.position.y = v; });
-    userFolder.add(guiSettings, 'userZ', -5, 5, 0.01).onChange(v => { cameraRig.position.z = v; if (userSpawnHelper) userSpawnHelper.position.z = v; });
-    userFolder.add(guiSettings, 'showUserSpawn').name('Show Spawn Marker').onChange(v => { if (userSpawnHelper) userSpawnHelper.visible = v; });
-
-    const incomingFolder = gui.addFolder('Incoming Accident Vehicle');
-    incomingFolder.add(guiSettings, 'incStartTime', 0, 60, 0.1).name('Start Time (s)');
-    incomingFolder.add(guiSettings, 'incStartX', -100, 100, 0.1).name('Start X');
-    incomingFolder.add(guiSettings, 'incStartY', -10, 10, 0.01).name('Start Y');
-    incomingFolder.add(guiSettings, 'incStartZ', -200, 200, 0.1).name('Start Z');
-    incomingFolder.add(guiSettings, 'incRotY', -Math.PI, Math.PI, 0.01).name('Rotation Y');
-    incomingFolder.add(guiSettings, 'incScale', 0.001, 2, 0.001).name('Scale');
-    incomingFolder.add(guiSettings, 'incSpeedX', -100, 100, 0.1).name('Speed X');
-    incomingFolder.add(guiSettings, 'incSpeedZ', -100, 100, 0.1).name('Speed Z');
-    incomingFolder.add(guiSettings, 'crashThresholdX', -20, 20, 0.1).name('Crash Config: X Threshold');
-
-    const therapistFolder = gui.addFolder('Therapist Controls');
-    therapistFolder.add(guiSettings, 'playScenario').name('Play / Pause');
-    therapistFolder.add(guiSettings, 'scenarioSpeed', -3.0, 3.0, 0.1).name('Speed Multiplier');
-    therapistFolder.add(guiSettings, 'resetScenario').name('Rewind (Reset Scenario)');
+    // GUI Setup from separate UI Manager module
+    const models = { carModel, passengerModel, roadModel, cameraRig, userSpawnHelper };
+    const gui = createTherapistGUI(guiSettings, models);
 
     // VR Controller Events - binding to both indices just in case (left/right order depends on power-on sequence)
     for (let i = 0; i < 2; i++) {
@@ -263,66 +190,6 @@ function init() {
             guiSettings.resetScenario(); // Rewind/Reset (Grip)
         });
         scene.add(controller);
-    }
-}
-
-function setupAudio(targetObj) {
-    const sound = new THREE.PositionalAudio(audioListenerGlobal);
-    const oscillator = audioListenerGlobal.context.createOscillator();
-    oscillator.type = 'sine';
-    oscillator.frequency.setValueAtTime(440, audioListenerGlobal.context.currentTime);
-    oscillator.start(0);
-
-    sound.setNodeSource(oscillator);
-    sound.setRefDistance(1);
-    sound.setVolume(0);
-
-    targetObj.add(sound);
-
-    window.addEventListener('pointerdown', () => {
-        if (audioListenerGlobal.context.state === 'suspended') {
-            audioListenerGlobal.context.resume();
-        }
-        setInterval(() => {
-            if (sound.getVolume() > 0) return;
-            sound.setVolume(0.1);
-            setTimeout(() => sound.setVolume(0), 1000);
-        }, 3000);
-    }, { once: true });
-}
-
-function triggerTinnitus() {
-    if (tinnitusActive || !audioListenerGlobal) return;
-    tinnitusActive = true;
-
-    const context = audioListenerGlobal.context;
-    if (context.state === 'suspended') context.resume();
-
-    currentTinnitusOsc = context.createOscillator();
-    currentTinnitusOsc.type = 'sine';
-    currentTinnitusOsc.frequency.setValueAtTime(6000, context.currentTime);
-
-    currentTinnitusGain = context.createGain();
-    currentTinnitusGain.gain.setValueAtTime(0, context.currentTime);
-    currentTinnitusGain.gain.linearRampToValueAtTime(0.3, context.currentTime + 0.1); // Sudden hit
-    currentTinnitusGain.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 10); // Fade 10s
-
-    currentTinnitusOsc.connect(currentTinnitusGain);
-    currentTinnitusGain.connect(context.destination);
-
-    currentTinnitusOsc.start();
-}
-
-function stopTinnitus() {
-    tinnitusActive = false;
-    if (currentTinnitusOsc) {
-        currentTinnitusOsc.stop();
-        currentTinnitusOsc.disconnect();
-        currentTinnitusOsc = null;
-    }
-    if (currentTinnitusGain) {
-        currentTinnitusGain.disconnect();
-        currentTinnitusGain = null;
     }
 }
 
@@ -418,9 +285,9 @@ function render() {
 
     // 4. Audio Tinnitus Trigger
     if (t >= t_crash && t < t_end) {
-        if (!tinnitusActive) triggerTinnitus();
+        if (!isTinnitusActive()) triggerTinnitus();
     } else {
-        if (tinnitusActive) stopTinnitus();
+        if (isTinnitusActive()) stopTinnitus();
     }
 
     // 5. End Text Overlay Display

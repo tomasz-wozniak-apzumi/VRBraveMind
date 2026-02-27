@@ -16,8 +16,11 @@ const speed = 15;
 
 const guiSettings = {
     carX: -0.82, carY: 0.41, carZ: 3.85, carScale: 0.03,
+    carRotX: 0, carRotY: 0, carRotZ: 0,
     passX: 0.6, passY: 0.45, passZ: -0.1, passScale: 1,
-    roadX: -86.8, roadY: -8.2, roadZ: -102.3, roadScale: 2
+    passRotX: 0, passRotY: Math.PI, passRotZ: 0,
+    roadX: -86.8, roadY: -8.2, roadZ: -102.3, roadScale: 2,
+    roadRotX: 0, roadRotY: 0, roadRotZ: 0
 };
 
 init();
@@ -84,6 +87,7 @@ function init() {
     fbxLoader.load('/models3d/32-mercedes-benz-gls-580-2020/uploads_files_2787791_Mercedes+Benz+GLS+580.fbx', function (fbx) {
         carModel = fbx;
         carModel.position.set(guiSettings.carX, guiSettings.carY, guiSettings.carZ);
+        carModel.rotation.set(guiSettings.carRotX, guiSettings.carRotY, guiSettings.carRotZ);
         carModel.scale.setScalar(guiSettings.carScale);
         carGroup.add(carModel);
     }, undefined, function (e) {
@@ -93,12 +97,10 @@ function init() {
     loader.load('/models3d/ready_player_me_female_character_sittingLoop.glb', function (gltf) {
         passengerModel = gltf.scene;
 
-        // Przesunięcie z panelu GUI
+        // Przesunięcie i obrót z panelu GUI
         passengerModel.position.set(guiSettings.passX, guiSettings.passY, guiSettings.passZ);
+        passengerModel.rotation.set(guiSettings.passRotX, guiSettings.passRotY, guiSettings.passRotZ);
         passengerModel.scale.setScalar(guiSettings.passScale);
-
-        // Obrót postaci, aby patrzyła w stronę przedniej szyby
-        passengerModel.rotation.y = Math.PI;
 
         carGroup.add(passengerModel);
         setupAudio(passengerModel);
@@ -115,6 +117,7 @@ function init() {
     fbxLoader.load('/ZRNAssets/005339_08932_25_14/Models/PQ_Remake_AKIHABARA.fbx', function (fbx) {
         roadModel = fbx;
         roadModel.position.set(guiSettings.roadX, guiSettings.roadY, guiSettings.roadZ);
+        roadModel.rotation.set(guiSettings.roadRotX, guiSettings.roadRotY, guiSettings.roadRotZ);
         roadModel.scale.setScalar(guiSettings.roadScale);
         scene.add(roadModel);
     }, undefined, function (e) {
@@ -135,18 +138,27 @@ function init() {
     carFolder.add(guiSettings, 'carX', -10, 10, 0.01).onChange(v => { if (carModel) carModel.position.x = v; });
     carFolder.add(guiSettings, 'carY', -10, 10, 0.01).onChange(v => { if (carModel) carModel.position.y = v; });
     carFolder.add(guiSettings, 'carZ', -10, 10, 0.01).onChange(v => { if (carModel) carModel.position.z = v; });
+    carFolder.add(guiSettings, 'carRotX', -Math.PI, Math.PI, 0.01).onChange(v => { if (carModel) carModel.rotation.x = v; });
+    carFolder.add(guiSettings, 'carRotY', -Math.PI, Math.PI, 0.01).onChange(v => { if (carModel) carModel.rotation.y = v; });
+    carFolder.add(guiSettings, 'carRotZ', -Math.PI, Math.PI, 0.01).onChange(v => { if (carModel) carModel.rotation.z = v; });
     carFolder.add(guiSettings, 'carScale', 0.001, 2, 0.001).onChange(v => { if (carModel) carModel.scale.setScalar(v); });
 
     const passFolder = gui.addFolder('Passenger');
     passFolder.add(guiSettings, 'passX', -5, 5, 0.01).onChange(v => { if (passengerModel) passengerModel.position.x = v; });
     passFolder.add(guiSettings, 'passY', -5, 5, 0.01).onChange(v => { if (passengerModel) passengerModel.position.y = v; });
     passFolder.add(guiSettings, 'passZ', -5, 5, 0.01).onChange(v => { if (passengerModel) passengerModel.position.z = v; });
+    passFolder.add(guiSettings, 'passRotX', -Math.PI, Math.PI, 0.01).onChange(v => { if (passengerModel) passengerModel.rotation.x = v; });
+    passFolder.add(guiSettings, 'passRotY', -Math.PI, Math.PI, 0.01).onChange(v => { if (passengerModel) passengerModel.rotation.y = v; });
+    passFolder.add(guiSettings, 'passRotZ', -Math.PI, Math.PI, 0.01).onChange(v => { if (passengerModel) passengerModel.rotation.z = v; });
     passFolder.add(guiSettings, 'passScale', 0.1, 5, 0.01).onChange(v => { if (passengerModel) passengerModel.scale.setScalar(v); });
 
     const roadFolder = gui.addFolder('Road/City (Akihabara)');
     roadFolder.add(guiSettings, 'roadX', -500, 500, 0.1).onChange(v => { if (roadModel) roadModel.position.x = v; });
     roadFolder.add(guiSettings, 'roadY', -100, 100, 0.1).onChange(v => { if (roadModel) roadModel.position.y = v; });
     roadFolder.add(guiSettings, 'roadZ', -1000, 1000, 0.1).onChange(v => { if (roadModel) roadModel.position.z = v; });
+    roadFolder.add(guiSettings, 'roadRotX', -Math.PI, Math.PI, 0.01).onChange(v => { if (roadModel) roadModel.rotation.x = v; });
+    roadFolder.add(guiSettings, 'roadRotY', -Math.PI, Math.PI, 0.01).onChange(v => { if (roadModel) roadModel.rotation.y = v; });
+    roadFolder.add(guiSettings, 'roadRotZ', -Math.PI, Math.PI, 0.01).onChange(v => { if (roadModel) roadModel.rotation.z = v; });
     roadFolder.add(guiSettings, 'roadScale', 0.001, 20, 0.001).onChange(v => { if (roadModel) roadModel.scale.setScalar(v); });
 }
 

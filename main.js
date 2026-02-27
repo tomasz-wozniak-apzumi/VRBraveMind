@@ -29,6 +29,8 @@ const guiSettings = {
     userX: 0.33, userY: -0.41, userZ: 0.82,
     showUserSpawn: false, // Turned off by default so the red sphere does not obstruct patient view
     showLabels: false,
+    incStartX: 20, incStartY: -1.5, incStartZ: -60, incRotY: -0.785, incScale: 0.03,
+    incStartTime: 10.0, incSpeedX: 20, incSpeedZ: 25, crashThresholdX: 1.0,
     playScenario: false, // Started paused for safety as requested by "Play / Pause" unchecked
     scenarioSpeed: 1.0,
     resetScenario: () => {
@@ -247,6 +249,17 @@ function init() {
     userFolder.add(guiSettings, 'userZ', -5, 5, 0.01).onChange(v => { cameraRig.position.z = v; if (userSpawnHelper) userSpawnHelper.position.z = v; });
     userFolder.add(guiSettings, 'showUserSpawn').name('Show Spawn Marker').onChange(v => { if (userSpawnHelper) userSpawnHelper.visible = v; });
 
+    const incomingFolder = gui.addFolder('Incoming Accident Vehicle');
+    incomingFolder.add(guiSettings, 'incStartTime', 0, 60, 0.1).name('Start Time (s)');
+    incomingFolder.add(guiSettings, 'incStartX', -100, 100, 0.1).name('Start X');
+    incomingFolder.add(guiSettings, 'incStartY', -10, 10, 0.01).name('Start Y');
+    incomingFolder.add(guiSettings, 'incStartZ', -200, 200, 0.1).name('Start Z');
+    incomingFolder.add(guiSettings, 'incRotY', -Math.PI, Math.PI, 0.01).name('Rotation Y');
+    incomingFolder.add(guiSettings, 'incScale', 0.001, 2, 0.001).name('Scale');
+    incomingFolder.add(guiSettings, 'incSpeedX', -100, 100, 0.1).name('Speed X');
+    incomingFolder.add(guiSettings, 'incSpeedZ', -100, 100, 0.1).name('Speed Z');
+    incomingFolder.add(guiSettings, 'crashThresholdX', -20, 20, 0.1).name('Crash Config: X Threshold');
+
     const therapistFolder = gui.addFolder('Therapist Controls');
     therapistFolder.add(guiSettings, 'playScenario').name('Play / Pause');
     therapistFolder.add(guiSettings, 'scenarioSpeed', 0.1, 3.0, 0.1).name('Speed Multiplier');
@@ -352,21 +365,21 @@ function render() {
     scenarioTimer += delta;
     let currentSpeed = speed * guiSettings.scenarioSpeed;
 
-    if (scenarioState === 'NEUTRAL' && scenarioTimer > 10) {
+    if (scenarioState === 'NEUTRAL' && scenarioTimer > guiSettings.incStartTime) {
         scenarioState = 'ACCIDENT';
         if (incomingCarGroup) {
-            // Pos incoming car on the right
-            incomingCarGroup.position.set(20, 0, -60);
-            incomingCarGroup.rotation.y = -Math.PI / 4;
+            incomingCarGroup.position.set(guiSettings.incStartX, guiSettings.incStartY, guiSettings.incStartZ);
+            incomingCarGroup.rotation.y = guiSettings.incRotY;
+            incomingCarGroup.scale.setScalar(guiSettings.incScale);
         }
     }
 
     if (scenarioState === 'ACCIDENT') {
         if (incomingCarGroup) {
-            incomingCarGroup.position.x -= 20 * delta; // Drives left towards us
-            incomingCarGroup.position.z += 25 * delta; // Drives towards camera
+            incomingCarGroup.position.x -= guiSettings.incSpeedX * delta;
+            incomingCarGroup.position.z += guiSettings.incSpeedZ * delta;
 
-            if (incomingCarGroup.position.x < 1.0) { // Crash point
+            if (incomingCarGroup.position.x < guiSettings.crashThresholdX) { // Crash point
                 scenarioState = 'POST_ACCIDENT';
                 accidentSpin = 8;
                 triggerTinnitus();

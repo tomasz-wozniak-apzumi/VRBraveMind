@@ -3,11 +3,12 @@ import { VRButton } from 'three/examples/jsm/webxr/VRButton.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
+import { TGALoader } from 'three/examples/jsm/loaders/TGALoader.js';
 import GUI from 'lil-gui';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 let camera, scene, renderer;
-let carGroup, passengerModel, carModel;
+let carGroup, passengerModel, carModel, roadModel;
 let grid;
 let clock = new THREE.Clock();
 let mixer;
@@ -15,7 +16,8 @@ const speed = 15;
 
 const guiSettings = {
     carX: -0.82, carY: 0.41, carZ: 3.85, carScale: 0.03,
-    passX: 0.6, passY: 0.45, passZ: -0.1, passScale: 1
+    passX: 0.6, passY: 0.45, passZ: -0.1, passScale: 1,
+    roadX: 0, roadY: 0, roadZ: 0, roadScale: 0.01
 };
 
 init();
@@ -69,6 +71,9 @@ function init() {
     dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
     loader.setDRACOLoader(dracoLoader);
 
+    const tgaLoader = new TGALoader(loadingManager);
+    loadingManager.addHandler(/\.tga$/i, tgaLoader);
+
     carGroup = new THREE.Group();
     scene.add(carGroup);
 
@@ -104,6 +109,15 @@ function init() {
         console.error(e);
     });
 
+    fbxLoader.load('/ZRNAssets/005339_08932_25_14/Models/PQ_Remake_AKIHABARA.fbx', function (fbx) {
+        roadModel = fbx;
+        roadModel.position.set(guiSettings.roadX, guiSettings.roadY, guiSettings.roadZ);
+        roadModel.scale.setScalar(guiSettings.roadScale);
+        scene.add(roadModel);
+    }, undefined, function (e) {
+        console.error(e);
+    });
+
     grid = new THREE.GridHelper(2000, 200, 0x000000, 0x000000);
     grid.material.opacity = 0.2;
     grid.material.transparent = true;
@@ -125,6 +139,12 @@ function init() {
     passFolder.add(guiSettings, 'passY', -5, 5, 0.01).onChange(v => { if (passengerModel) passengerModel.position.y = v; });
     passFolder.add(guiSettings, 'passZ', -5, 5, 0.01).onChange(v => { if (passengerModel) passengerModel.position.z = v; });
     passFolder.add(guiSettings, 'passScale', 0.1, 5, 0.01).onChange(v => { if (passengerModel) passengerModel.scale.setScalar(v); });
+
+    const roadFolder = gui.addFolder('Road/City (Akihabara)');
+    roadFolder.add(guiSettings, 'roadX', -100, 100, 0.1).onChange(v => { if (roadModel) roadModel.position.x = v; });
+    roadFolder.add(guiSettings, 'roadY', -100, 100, 0.1).onChange(v => { if (roadModel) roadModel.position.y = v; });
+    roadFolder.add(guiSettings, 'roadZ', -500, 500, 0.1).onChange(v => { if (roadModel) roadModel.position.z = v; });
+    roadFolder.add(guiSettings, 'roadScale', 0.001, 2, 0.001).onChange(v => { if (roadModel) roadModel.scale.setScalar(v); });
 }
 
 function setupAudio(targetObj) {
@@ -170,6 +190,16 @@ function render() {
     if (grid) {
         grid.position.z += speed * delta;
         if (grid.position.z > 10) grid.position.z -= 10;
+    }
+    if (roadModel) {
+        // Pseudo driving motion: moving city environment backwards
+        roadModel.position.z += speed * delta;
+
+        // Very basic simple loop: if city drives too far back, reset it 
+        // to keep impression of continuous forward movement. (Value '300' is arbitrary and needs tweaking on scale).
+        if (roadModel.position.z > 300) {
+            roadModel.position.z = 0;
+        }
     }
     if (mixer) {
         mixer.update(delta);

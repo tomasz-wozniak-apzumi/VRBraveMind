@@ -26,6 +26,8 @@ const guiSettings = {
     passRotX: 0, passRotY: 3.141592, passRotZ: 0,
     roadX: 0, roadY: -3.3, roadZ: 0, roadScale: 3,
     roadRotX: 0, roadRotY: 0, roadRotZ: 0,
+    userX: 0.4, userY: 1.2, userZ: -0.2,
+    showUserSpawn: true,
     showLabels: false,
     playScenario: true,
     scenarioSpeed: 1.0,
@@ -65,7 +67,15 @@ function init() {
     const cameraRig = new THREE.Group();
     carGroup.add(cameraRig); // Wrap camera into car for synchronized spin during accident
     cameraRig.add(camera);
-    cameraRig.position.set(0.4, 1.2, -0.2);
+    cameraRig.position.set(guiSettings.userX, guiSettings.userY, guiSettings.userZ);
+
+    // Visual helper for the user spawn point
+    const userGeo = new THREE.SphereGeometry(0.15, 16, 16);
+    const userMat = new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: true });
+    const userSpawnHelper = new THREE.Mesh(userGeo, userMat);
+    userSpawnHelper.position.copy(cameraRig.position);
+    userSpawnHelper.visible = guiSettings.showUserSpawn;
+    carGroup.add(userSpawnHelper);
 
     audioListenerGlobal = new THREE.AudioListener();
     camera.add(audioListenerGlobal);
@@ -230,6 +240,12 @@ function init() {
             });
         }
     });
+
+    const userFolder = gui.addFolder('User (Driver) Spawn');
+    userFolder.add(guiSettings, 'userX', -5, 5, 0.01).onChange(v => { cameraRig.position.x = v; if (userSpawnHelper) userSpawnHelper.position.x = v; });
+    userFolder.add(guiSettings, 'userY', -5, 5, 0.01).onChange(v => { cameraRig.position.y = v; if (userSpawnHelper) userSpawnHelper.position.y = v; });
+    userFolder.add(guiSettings, 'userZ', -5, 5, 0.01).onChange(v => { cameraRig.position.z = v; if (userSpawnHelper) userSpawnHelper.position.z = v; });
+    userFolder.add(guiSettings, 'showUserSpawn').name('Show Spawn Marker').onChange(v => { if (userSpawnHelper) userSpawnHelper.visible = v; });
 
     const therapistFolder = gui.addFolder('Therapist Controls');
     therapistFolder.add(guiSettings, 'playScenario').name('Play / Pause');

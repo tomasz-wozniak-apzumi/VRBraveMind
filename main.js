@@ -2,13 +2,20 @@ import * as THREE from 'three';
 import { VRButton } from 'three/examples/jsm/webxr/VRButton.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
+import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
+import GUI from 'lil-gui';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 let camera, scene, renderer;
-let carGroup, passengerModel;
+let carGroup, passengerModel, carModel;
 let grid;
 let clock = new THREE.Clock();
 const speed = 15;
+
+const guiSettings = {
+    carX: 0, carY: 0, carZ: 0, carScale: 0.01,
+    passX: 0.6, passY: 0.45, passZ: -0.1, passScale: 1
+};
 
 init();
 animate();
@@ -64,9 +71,12 @@ function init() {
     carGroup = new THREE.Group();
     scene.add(carGroup);
 
-    loader.load('/models3d/autonomous_gt_car_interior_design_-_manual_mode.glb', function (gltf) {
-        const car = gltf.scene;
-        carGroup.add(car);
+    const fbxLoader = new FBXLoader(loadingManager);
+    fbxLoader.load('/models3d/32-mercedes-benz-gls-580-2020/uploads_files_2787791_Mercedes+Benz+GLS+580.fbx', function (fbx) {
+        carModel = fbx;
+        carModel.position.set(guiSettings.carX, guiSettings.carY, guiSettings.carZ);
+        carModel.scale.setScalar(guiSettings.carScale);
+        carGroup.add(carModel);
     }, undefined, function (e) {
         console.error(e);
     });
@@ -74,8 +84,9 @@ function init() {
     loader.load('/models3d/ready_player_me_female_character.glb', function (gltf) {
         passengerModel = gltf.scene;
 
-        // Przesunięcie na prawy fotel pasażera (X na plus), podniesiona na wysokość siedzenia (Y), i wsunięta w fotel (Z)
-        passengerModel.position.set(0.6, 0.45, -0.1);
+        // Przesunięcie z panelu GUI
+        passengerModel.position.set(guiSettings.passX, guiSettings.passY, guiSettings.passZ);
+        passengerModel.scale.setScalar(guiSettings.passScale);
 
         // Obrót postaci, aby patrzyła w stronę przedniej szyby
         passengerModel.rotation.y = Math.PI;
@@ -115,6 +126,20 @@ function init() {
     scene.add(grid);
 
     window.addEventListener('resize', onWindowResize);
+
+    // GUI Setup
+    const gui = new GUI();
+    const carFolder = gui.addFolder('Car (Mercedes)');
+    carFolder.add(guiSettings, 'carX', -10, 10, 0.01).onChange(v => { if (carModel) carModel.position.x = v; });
+    carFolder.add(guiSettings, 'carY', -10, 10, 0.01).onChange(v => { if (carModel) carModel.position.y = v; });
+    carFolder.add(guiSettings, 'carZ', -10, 10, 0.01).onChange(v => { if (carModel) carModel.position.z = v; });
+    carFolder.add(guiSettings, 'carScale', 0.001, 2, 0.001).onChange(v => { if (carModel) carModel.scale.setScalar(v); });
+
+    const passFolder = gui.addFolder('Passenger');
+    passFolder.add(guiSettings, 'passX', -5, 5, 0.01).onChange(v => { if (passengerModel) passengerModel.position.x = v; });
+    passFolder.add(guiSettings, 'passY', -5, 5, 0.01).onChange(v => { if (passengerModel) passengerModel.position.y = v; });
+    passFolder.add(guiSettings, 'passZ', -5, 5, 0.01).onChange(v => { if (passengerModel) passengerModel.position.z = v; });
+    passFolder.add(guiSettings, 'passScale', 0.1, 5, 0.01).onChange(v => { if (passengerModel) passengerModel.scale.setScalar(v); });
 }
 
 function setupAudio(targetObj) {

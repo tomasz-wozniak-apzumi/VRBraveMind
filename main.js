@@ -26,7 +26,25 @@ const guiSettings = {
     passRotX: 0, passRotY: 3.141592, passRotZ: 0,
     roadX: 0, roadY: -3.3, roadZ: 0, roadScale: 3,
     roadRotX: 0, roadRotY: 0, roadRotZ: 0,
-    showLabels: false
+    showLabels: false,
+    playScenario: true,
+    scenarioSpeed: 1.0,
+    resetScenario: () => {
+        scenarioState = 'NEUTRAL';
+        scenarioTimer = 0;
+        accidentSpin = 0;
+        tinnitusActive = false;
+
+        // Reset local positions modified during accident
+        if (carGroup) {
+            carGroup.rotation.set(0, 0, 0);
+            carGroup.position.set(0, 0, 0);
+        }
+        if (incomingCarGroup) {
+            incomingCarGroup.position.set(50, 0, -100);
+            incomingCarGroup.rotation.set(0, 0, 0);
+        }
+    }
 };
 
 init();
@@ -212,6 +230,21 @@ function init() {
             });
         }
     });
+
+    const therapistFolder = gui.addFolder('Therapist Controls');
+    therapistFolder.add(guiSettings, 'playScenario').name('Play / Pause');
+    therapistFolder.add(guiSettings, 'scenarioSpeed', 0.1, 3.0, 0.1).name('Speed Multiplier');
+    therapistFolder.add(guiSettings, 'resetScenario').name('Rewind (Reset Scenario)');
+
+    // VR Controller Events (Right Controller fallback map: select=Trigger, squeeze=Grip)
+    const rightController = renderer.xr.getController(1);
+    rightController.addEventListener('selectstart', () => {
+        guiSettings.playScenario = !guiSettings.playScenario; // Toggle Play/Pause
+    });
+    rightController.addEventListener('squeezestart', () => {
+        guiSettings.resetScenario(); // Rewind/Reset
+    });
+    scene.add(rightController);
 }
 
 function setupAudio(targetObj) {
@@ -273,9 +306,35 @@ function animate() {
 }
 
 function render() {
-    const delta = clock.getDelta();
+    let delta = clock.getDelta();
+
+    // Query VR Gamepad for right thumbstick (speed control)
+    const session = renderer.xr.getSession();
+    if (session) {
+        for (const source of session.inputSources) {
+            if (source && source.handedness === 'right' && source.gamepad) {
+                // Usually axis 3 is Thumbstick Y, axis 2 is X. 
+                // Pushing up usually gives -1, pulling down gives +1.
+                const speedAxis = source.gamepad.axes[3];
+                if (speedAxis !== undefined && Math.abs(speedAxis) > 0.1) {
+                    guiSettings.scenarioSpeed -= speedAxis * 0.05; // adjust gradually
+                    if (guiSettings.scenarioSpeed < 0.1) guiSettings.scenarioSpeed = 0.1;
+                    if (guiSettings.scenarioSpeed > 3.0) guiSettings.scenarioSpeed = 3.0;
+                }
+            }
+        }
+    }
+
+    if (!guiSettings.playScenario) {
+        // Obiekty stoją w miejscu jeśli symulacja zapauzowana (ale render idzie dalej by ruszać głową w VR)
+        renderer.render(scene, camera);
+        return;
+    }
+
+    // Apply scaling
+    delta *= guiSettings.scenarioSpeed;
     scenarioTimer += delta;
-    let currentSpeed = speed;
+    let currentSpeed = speed * guiSettings.scenarioSpeed;
 
     if (scenarioState === 'NEUTRAL' && scenarioTimer > 10) {
         scenarioState = 'ACCIDENT';
@@ -300,7 +359,7 @@ function render() {
     }
 
     if (scenarioState === 'POST_ACCIDENT') {
-        currentSpeed = speed * 0.1; // Slow down drastically
+        currentSpeed = (speed * 0.1) * guiSettings.scenarioSpeed; // Slow down drastically
         if (accidentSpin > 0) {
             carGroup.rotation.y += accidentSpin * delta; // Uncontrolled spin
             accidentSpin -= 5 * delta;

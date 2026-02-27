@@ -19,7 +19,7 @@ const guiSettings = {
     carRotX: 1.598407, carRotY: 3.141592, carRotZ: 0.288407,
     passX: 0.6, passY: 1.93, passZ: 1.19, passScale: 1,
     passRotX: 0, passRotY: 3.141592, passRotZ: 0,
-    roadX: 0, roadY: 0, roadZ: 0, roadScale: 1,
+    roadX: 0, roadY: -3.3, roadZ: 0, roadScale: 3,
     roadRotX: 0, roadRotY: 0, roadRotZ: 0
 };
 
@@ -153,7 +153,7 @@ function init() {
     passFolder.add(guiSettings, 'passRotZ', -Math.PI, Math.PI, 0.01).onChange(v => { if (passengerModel) passengerModel.rotation.z = v; });
     passFolder.add(guiSettings, 'passScale', 0.1, 5, 0.01).onChange(v => { if (passengerModel) passengerModel.scale.setScalar(v); });
 
-    const roadFolder = gui.addFolder('Road/City (Akihabara)');
+    const roadFolder = gui.addFolder('Road/Environment');
     roadFolder.add(guiSettings, 'roadX', -500, 500, 0.1).onChange(v => { if (roadModel) roadModel.position.x = v; });
     roadFolder.add(guiSettings, 'roadY', -100, 100, 0.1).onChange(v => { if (roadModel) roadModel.position.y = v; });
     roadFolder.add(guiSettings, 'roadZ', -1000, 1000, 0.1).onChange(v => { if (roadModel) roadModel.position.z = v; });

@@ -58,8 +58,8 @@ export function createTherapistGUI(guiSettings, models) {
     incomingFolder.add(guiSettings, 'crashThresholdX', -20, 20, 0.1).name('Crash Config: X Threshold');
 
     const therapistFolder = gui.addFolder('Therapist Controls');
-    therapistFolder.add(guiSettings, 'playScenario').name('Play / Pause');
-    therapistFolder.add(guiSettings, 'scenarioSpeed', -3.0, 3.0, 0.1).name('Speed Multiplier');
+    therapistFolder.add(guiSettings, 'playScenario').name('Play / Pause').listen();
+    therapistFolder.add(guiSettings, 'scenarioSpeed', -3.0, 3.0, 0.1).name('Speed Multiplier').listen();
     therapistFolder.add(guiSettings, 'resetScenario').name('Rewind (Reset Scenario)');
 
     return gui;

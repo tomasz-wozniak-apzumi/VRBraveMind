@@ -265,15 +265,17 @@ function init() {
     therapistFolder.add(guiSettings, 'scenarioSpeed', 0.1, 3.0, 0.1).name('Speed Multiplier');
     therapistFolder.add(guiSettings, 'resetScenario').name('Rewind (Reset Scenario)');
 
-    // VR Controller Events (Right Controller fallback map: select=Trigger, squeeze=Grip)
-    const rightController = renderer.xr.getController(1);
-    rightController.addEventListener('selectstart', () => {
-        guiSettings.playScenario = !guiSettings.playScenario; // Toggle Play/Pause
-    });
-    rightController.addEventListener('squeezestart', () => {
-        guiSettings.resetScenario(); // Rewind/Reset
-    });
-    scene.add(rightController);
+    // VR Controller Events - binding to both indices just in case (left/right order depends on power-on sequence)
+    for (let i = 0; i < 2; i++) {
+        const controller = renderer.xr.getController(i);
+        controller.addEventListener('selectstart', () => {
+            guiSettings.playScenario = !guiSettings.playScenario; // Toggle Play/Pause (Trigger)
+        });
+        controller.addEventListener('squeezestart', () => {
+            guiSettings.resetScenario(); // Rewind/Reset (Grip)
+        });
+        scene.add(controller);
+    }
 }
 
 function setupAudio(targetObj) {
@@ -346,7 +348,7 @@ function render() {
                 // Pushing up usually gives -1, pulling down gives +1.
                 const speedAxis = source.gamepad.axes[3];
                 if (speedAxis !== undefined && Math.abs(speedAxis) > 0.1) {
-                    guiSettings.scenarioSpeed -= speedAxis * 0.05; // adjust gradually
+                    guiSettings.scenarioSpeed -= speedAxis * 0.01; // adjust gradually, 0.01 per frame
                     if (guiSettings.scenarioSpeed < 0.1) guiSettings.scenarioSpeed = 0.1;
                     if (guiSettings.scenarioSpeed > 3.0) guiSettings.scenarioSpeed = 3.0;
                 }

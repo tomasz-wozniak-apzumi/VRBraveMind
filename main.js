@@ -119,6 +119,22 @@ function init() {
         roadModel.position.set(guiSettings.roadX, guiSettings.roadY, guiSettings.roadZ);
         roadModel.rotation.set(guiSettings.roadRotX, guiSettings.roadRotY, guiSettings.roadRotZ);
         roadModel.scale.setScalar(guiSettings.roadScale);
+
+        // Fix for standard Unity FBX material darkness issue
+        roadModel.traverse((child) => {
+            if (child.isMesh) {
+                if (Array.isArray(child.material)) {
+                    child.material.forEach(mat => {
+                        if (mat.color) mat.color.setHex(0xffffff);
+                        mat.transparent = true;
+                    });
+                } else {
+                    if (child.material.color) child.material.color.setHex(0xffffff);
+                    child.material.transparent = true;
+                }
+            }
+        });
+
         scene.add(roadModel);
     }, undefined, function (e) {
         console.error(e);

@@ -17,7 +17,7 @@ const speed = 15;
 const guiSettings = {
     carX: -0.82, carY: 0.41, carZ: 3.85, carScale: 0.03,
     passX: 0.6, passY: 0.45, passZ: -0.1, passScale: 1,
-    roadX: 0, roadY: 0, roadZ: 0, roadScale: 0.01
+    roadX: -86.8, roadY: -8.2, roadZ: -102.3, roadScale: 2
 };
 
 init();
@@ -37,14 +37,17 @@ function init() {
     cameraRig.add(camera);
     cameraRig.position.set(0.4, 1.2, -0.2);
 
-    const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.6);
+    const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 1.5);
     hemiLight.position.set(0, 200, 0);
     scene.add(hemiLight);
 
-    const dirLight = new THREE.DirectionalLight(0xffaa55, 0.8);
+    const dirLight = new THREE.DirectionalLight(0xffaa55, 1.5);
     dirLight.position.set(0, 20, -10);
     dirLight.castShadow = true;
     scene.add(dirLight);
+
+    const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
+    scene.add(ambientLight);
 
     renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setPixelRatio(window.devicePixelRatio);
@@ -141,10 +144,10 @@ function init() {
     passFolder.add(guiSettings, 'passScale', 0.1, 5, 0.01).onChange(v => { if (passengerModel) passengerModel.scale.setScalar(v); });
 
     const roadFolder = gui.addFolder('Road/City (Akihabara)');
-    roadFolder.add(guiSettings, 'roadX', -100, 100, 0.1).onChange(v => { if (roadModel) roadModel.position.x = v; });
+    roadFolder.add(guiSettings, 'roadX', -500, 500, 0.1).onChange(v => { if (roadModel) roadModel.position.x = v; });
     roadFolder.add(guiSettings, 'roadY', -100, 100, 0.1).onChange(v => { if (roadModel) roadModel.position.y = v; });
-    roadFolder.add(guiSettings, 'roadZ', -500, 500, 0.1).onChange(v => { if (roadModel) roadModel.position.z = v; });
-    roadFolder.add(guiSettings, 'roadScale', 0.001, 2, 0.001).onChange(v => { if (roadModel) roadModel.scale.setScalar(v); });
+    roadFolder.add(guiSettings, 'roadZ', -1000, 1000, 0.1).onChange(v => { if (roadModel) roadModel.position.z = v; });
+    roadFolder.add(guiSettings, 'roadScale', 0.001, 20, 0.001).onChange(v => { if (roadModel) roadModel.scale.setScalar(v); });
 }
 
 function setupAudio(targetObj) {

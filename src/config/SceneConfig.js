@@ -8,8 +8,8 @@ export const guiSettings = {
     userX: -1, userY: -0.23, userZ: 0.82,
     showUserSpawn: false, // Turned off by default so the red sphere does not obstruct patient view
     showLabels: false,
-    incStartX: 20, incStartY: -1.5, incStartZ: -60, incRotY: -0.785, incScale: 0.03,
-    incStartTime: 10.0, incSpeedX: -17.5, incSpeedZ: 25, crashThresholdX: 1.0,
+    incStartX: 151.4, incStartY: -1, incStartZ: -153.28, incRotY: -1.5708, incScale: 0.03,
+    incStartTime: 0.0, incSpeedX: -15, incSpeedZ: 15, crashThresholdX: 1.4,
     playScenario: true,
     scenarioSpeed: 1.0
 };

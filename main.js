@@ -13,10 +13,10 @@ let grid;
 let clock = new THREE.Clock();
 let mixer;
 let audioListenerGlobal;
-let scenarioState = 'NEUTRAL';
 let scenarioTimer = 0;
-let accidentSpin = 0;
 let tinnitusActive = false;
+let currentTinnitusOsc = null;
+let currentTinnitusGain = null;
 const speed = 15;
 
 const guiSettings = {
@@ -34,23 +34,8 @@ const guiSettings = {
     playScenario: true,
     scenarioSpeed: 1.0,
     resetScenario: () => {
-        scenarioState = 'NEUTRAL';
         scenarioTimer = 0;
-        accidentSpin = 0;
-        tinnitusActive = false;
-
-        // Reset local positions modified during accident
-        if (carGroup) {
-            carGroup.rotation.set(0, 0, 0);
-            carGroup.position.set(0, 0, 0);
-        }
-        if (incomingCarGroup) {
-            incomingCarGroup.position.set(50, 0, -100);
-            incomingCarGroup.rotation.set(0, 0, 0);
-        }
-        if (roadModel) {
-            roadModel.position.set(guiSettings.roadX, guiSettings.roadY, guiSettings.roadZ);
-        }
+        if (tinnitusActive) stopTinnitus();
     }
 };
 
@@ -265,7 +250,7 @@ function init() {
 
     const therapistFolder = gui.addFolder('Therapist Controls');
     therapistFolder.add(guiSettings, 'playScenario').name('Play / Pause');
-    therapistFolder.add(guiSettings, 'scenarioSpeed', 0.1, 3.0, 0.1).name('Speed Multiplier');
+    therapistFolder.add(guiSettings, 'scenarioSpeed', -3.0, 3.0, 0.1).name('Speed Multiplier');
     therapistFolder.add(guiSettings, 'resetScenario').name('Rewind (Reset Scenario)');
 
     // VR Controller Events - binding to both indices just in case (left/right order depends on power-on sequence)
@@ -313,20 +298,32 @@ function triggerTinnitus() {
     const context = audioListenerGlobal.context;
     if (context.state === 'suspended') context.resume();
 
-    const osc = context.createOscillator();
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(6000, context.currentTime);
+    currentTinnitusOsc = context.createOscillator();
+    currentTinnitusOsc.type = 'sine';
+    currentTinnitusOsc.frequency.setValueAtTime(6000, context.currentTime);
 
-    const gainNode = context.createGain();
-    gainNode.gain.setValueAtTime(0, context.currentTime);
-    gainNode.gain.linearRampToValueAtTime(0.3, context.currentTime + 0.1); // Sudden hit
-    gainNode.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 10); // Fade 10s
+    currentTinnitusGain = context.createGain();
+    currentTinnitusGain.gain.setValueAtTime(0, context.currentTime);
+    currentTinnitusGain.gain.linearRampToValueAtTime(0.3, context.currentTime + 0.1); // Sudden hit
+    currentTinnitusGain.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 10); // Fade 10s
 
-    osc.connect(gainNode);
-    gainNode.connect(context.destination);
+    currentTinnitusOsc.connect(currentTinnitusGain);
+    currentTinnitusGain.connect(context.destination);
 
-    osc.start();
-    osc.stop(context.currentTime + 10);
+    currentTinnitusOsc.start();
+}
+
+function stopTinnitus() {
+    tinnitusActive = false;
+    if (currentTinnitusOsc) {
+        currentTinnitusOsc.stop();
+        currentTinnitusOsc.disconnect();
+        currentTinnitusOsc = null;
+    }
+    if (currentTinnitusGain) {
+        currentTinnitusGain.disconnect();
+        currentTinnitusGain = null;
+    }
 }
 
 function onWindowResize() {
@@ -352,7 +349,7 @@ function render() {
                 const speedAxis = source.gamepad.axes[3];
                 if (speedAxis !== undefined && Math.abs(speedAxis) > 0.1) {
                     guiSettings.scenarioSpeed -= speedAxis * 0.01; // adjust gradually, 0.01 per frame
-                    if (guiSettings.scenarioSpeed < 0.1) guiSettings.scenarioSpeed = 0.1;
+                    if (guiSettings.scenarioSpeed < -3.0) guiSettings.scenarioSpeed = -3.0; // enable rewind speed
                     if (guiSettings.scenarioSpeed > 3.0) guiSettings.scenarioSpeed = 3.0;
                 }
             }
@@ -368,53 +365,88 @@ function render() {
     // Apply scaling
     delta *= guiSettings.scenarioSpeed;
     scenarioTimer += delta;
-    let currentSpeed = speed * guiSettings.scenarioSpeed;
+    if (scenarioTimer < 0) scenarioTimer = 0;
 
-    if (scenarioState === 'NEUTRAL' && scenarioTimer > guiSettings.incStartTime) {
-        scenarioState = 'ACCIDENT';
-        if (incomingCarGroup) {
-            incomingCarGroup.position.set(guiSettings.incStartX, guiSettings.incStartY, guiSettings.incStartZ);
+    let t = scenarioTimer;
+    let t_start = guiSettings.incStartTime;
+    // ensure time to crash is pure positive regardless of physics mistake (dirX guarantees crash)
+    let timeToCrash = Math.abs((guiSettings.incStartX - guiSettings.crashThresholdX) / (guiSettings.incSpeedX || 0.1));
+    let t_crash = t_start + timeToCrash;
+    let t_end = t_crash + 10.0;
+
+    // Hard freeze of time exactly at scenario completion
+    if (t > t_end) {
+        t = t_end;
+        scenarioTimer = t_end;
+    }
+
+    // 1. Road and Grid Movement (loop flawlessly tied to true evaluated time)
+    let traveled = speed * Math.min(t, t_crash) + (speed * 0.1) * Math.max(0, Math.min(t - t_crash, t_end - t_crash));
+    if (grid) grid.position.z = (traveled % 10);
+    if (roadModel) roadModel.position.z = guiSettings.roadZ + (traveled % 300);
+
+    // 2. Incoming Car Math
+    if (incomingCarGroup) {
+        if (t < t_start) {
+            incomingCarGroup.position.set(20, -100, -60); // hidden underground
+        } else {
+            let dtCar = Math.min(t - t_start, timeToCrash);
+            let dirX = Math.sign(guiSettings.crashThresholdX - guiSettings.incStartX);
+            incomingCarGroup.position.x = guiSettings.incStartX + dirX * Math.abs(guiSettings.incSpeedX) * dtCar;
+            incomingCarGroup.position.y = guiSettings.incStartY;
+            incomingCarGroup.position.z = guiSettings.incStartZ + guiSettings.incSpeedZ * dtCar;
             incomingCarGroup.rotation.y = guiSettings.incRotY;
             incomingCarGroup.scale.setScalar(guiSettings.incScale);
         }
     }
 
-    if (scenarioState === 'ACCIDENT') {
-        if (incomingCarGroup) {
-            incomingCarGroup.position.x -= guiSettings.incSpeedX * delta;
-            incomingCarGroup.position.z += guiSettings.incSpeedZ * delta;
-
-            if (incomingCarGroup.position.x < guiSettings.crashThresholdX) { // Crash point
-                scenarioState = 'POST_ACCIDENT';
-                accidentSpin = 8;
-                triggerTinnitus();
-            }
-        }
-    }
-
-    if (scenarioState === 'POST_ACCIDENT') {
-        currentSpeed = (speed * 0.1) * guiSettings.scenarioSpeed; // Slow down drastically
-        if (accidentSpin > 0) {
-            carGroup.rotation.y += accidentSpin * delta; // Uncontrolled spin
-            accidentSpin -= 5 * delta;
-            if (accidentSpin < 0) accidentSpin = 0;
-            carGroup.position.x -= 2 * delta;
-            carGroup.position.z -= 4 * delta;
+    // 3. Accident Spin & Sliding Math
+    if (carGroup) {
+        if (t <= t_crash) {
+            carGroup.rotation.y = 0;
+            carGroup.position.x = 0;
+            carGroup.position.z = 0;
         } else {
-            currentSpeed = 0; // Absolute stop
+            let dtCrash = t - t_crash;
+            let spinTime = Math.min(dtCrash, 8.0 / 5.0);
+            carGroup.rotation.y = 8 * spinTime - 2.5 * spinTime * spinTime;
+            let slideTime = Math.min(dtCrash, 3.0);
+            carGroup.position.x = -2 * slideTime; // skids left
+            carGroup.position.z = -4 * slideTime; // skids backward
         }
     }
 
-    if (grid && currentSpeed > 0) {
-        grid.position.z += currentSpeed * delta;
-        if (grid.position.z > 10) grid.position.z -= 10;
+    // 4. Audio Tinnitus Trigger
+    if (t >= t_crash && t < t_end) {
+        if (!tinnitusActive) triggerTinnitus();
+    } else {
+        if (tinnitusActive) stopTinnitus();
     }
-    if (roadModel && currentSpeed > 0) {
-        roadModel.position.z += currentSpeed * delta;
-        if (roadModel.position.z > 300) roadModel.position.z = 0;
+
+    // 5. End Text Overlay Display
+    let endText = document.getElementById('end-text-vr');
+    if (t >= t_end) {
+        if (!endText) {
+            endText = document.createElement('div');
+            endText.id = 'end-text-vr';
+            endText.style.position = 'absolute';
+            endText.style.top = '20px';
+            endText.style.width = '100%';
+            endText.style.textAlign = 'center';
+            endText.style.color = 'red';
+            endText.style.fontSize = '30px';
+            endText.style.fontWeight = 'bold';
+            endText.style.zIndex = '100';
+            endText.style.pointerEvents = 'none';
+            endText.innerText = 'SYMULACJA ZAKOŃCZONA - GOTOWE DO COFNIĘCIA (Wykorzystaj ujemny Speed)';
+            document.body.appendChild(endText);
+        } else {
+            endText.style.display = 'block';
+        }
+    } else {
+        if (endText) endText.style.display = 'none';
     }
-    if (mixer) {
-        mixer.update(delta);
-    }
+
+    if (mixer) mixer.update(Math.abs(delta)); // animation remains forward tracking even if reverse physics speed
     renderer.render(scene, camera);
 }

@@ -24,7 +24,7 @@ const guiSettings = {
     carRotX: 1.498407, carRotY: 3.141592, carRotZ: -0.00159,
     passX: -0.16, passY: -0.78, passZ: 0.94, passScale: 1.15,
     passRotX: 0, passRotY: 3.141592, passRotZ: 0,
-    roadX: -10.7, roadY: -1, roadZ: 0, roadScale: 3,
+    roadX: -10.7, roadY: 20, roadZ: 0, roadScale: 3,
     roadRotX: -0.10159, roadRotY: 1.608407, roadRotZ: 0,
     userX: -1, userY: -0.23, userZ: 0.82,
     showUserSpawn: false, // Turned off by default so the red sphere does not obstruct patient view

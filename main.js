@@ -19,7 +19,7 @@ const guiSettings = {
     carRotX: 1.598407, carRotY: 3.141592, carRotZ: 0.288407,
     passX: 0.6, passY: 1.93, passZ: 1.19, passScale: 1,
     passRotX: 0, passRotY: 3.141592, passRotZ: 0,
-    roadX: -86.8, roadY: -8.2, roadZ: -102.3, roadScale: 2,
+    roadX: 0, roadY: 0, roadZ: 0, roadScale: 1,
     roadRotX: 0, roadRotY: 0, roadRotZ: 0
 };
 
@@ -114,26 +114,11 @@ function init() {
         console.error(e);
     });
 
-    fbxLoader.load('/ZRNAssets/005339_08932_25_14/Models/PQ_Remake_AKIHABARA.fbx', function (fbx) {
-        roadModel = fbx;
+    loader.load('/models3d/esec_traffic_project.glb', function (gltf) {
+        roadModel = gltf.scene;
         roadModel.position.set(guiSettings.roadX, guiSettings.roadY, guiSettings.roadZ);
         roadModel.rotation.set(guiSettings.roadRotX, guiSettings.roadRotY, guiSettings.roadRotZ);
         roadModel.scale.setScalar(guiSettings.roadScale);
-
-        // Fix for standard Unity FBX material darkness issue
-        roadModel.traverse((child) => {
-            if (child.isMesh) {
-                if (Array.isArray(child.material)) {
-                    child.material.forEach(mat => {
-                        if (mat.color) mat.color.setHex(0xffffff);
-                        mat.transparent = true;
-                    });
-                } else {
-                    if (child.material.color) child.material.color.setHex(0xffffff);
-                    child.material.transparent = true;
-                }
-            }
-        });
 
         scene.add(roadModel);
     }, undefined, function (e) {

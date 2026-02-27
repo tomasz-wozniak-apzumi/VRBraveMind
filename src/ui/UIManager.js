@@ -1,50 +1,50 @@
 import GUI from 'lil-gui';
 
-export function createTherapistGUI(guiSettings, models) {
-    const { carModel, passengerModel, roadModel, cameraRig, userSpawnHelper } = models;
+export function createTherapistGUI(guiSettings, getModels) {
     const gui = new GUI();
 
     const carFolder = gui.addFolder('Car (Mercedes)');
-    carFolder.add(guiSettings, 'carX', -10, 10, 0.01).onChange(v => { if (carModel) carModel.position.x = v; });
-    carFolder.add(guiSettings, 'carY', -10, 10, 0.01).onChange(v => { if (carModel) carModel.position.y = v; });
-    carFolder.add(guiSettings, 'carZ', -10, 10, 0.01).onChange(v => { if (carModel) carModel.position.z = v; });
-    carFolder.add(guiSettings, 'carRotX', -Math.PI, Math.PI, 0.01).onChange(v => { if (carModel) carModel.rotation.x = v; });
-    carFolder.add(guiSettings, 'carRotY', -Math.PI, Math.PI, 0.01).onChange(v => { if (carModel) carModel.rotation.y = v; });
-    carFolder.add(guiSettings, 'carRotZ', -Math.PI, Math.PI, 0.01).onChange(v => { if (carModel) carModel.rotation.z = v; });
-    carFolder.add(guiSettings, 'carScale', 0.001, 2, 0.001).onChange(v => { if (carModel) carModel.scale.setScalar(v); });
+    carFolder.add(guiSettings, 'carX', -10, 10, 0.01).onChange(v => { const m = getModels(); if (m.carModel) m.carModel.position.x = v; });
+    carFolder.add(guiSettings, 'carY', -10, 10, 0.01).onChange(v => { const m = getModels(); if (m.carModel) m.carModel.position.y = v; });
+    carFolder.add(guiSettings, 'carZ', -10, 10, 0.01).onChange(v => { const m = getModels(); if (m.carModel) m.carModel.position.z = v; });
+    carFolder.add(guiSettings, 'carRotX', -Math.PI, Math.PI, 0.01).onChange(v => { const m = getModels(); if (m.carModel) m.carModel.rotation.x = v; });
+    carFolder.add(guiSettings, 'carRotY', -Math.PI, Math.PI, 0.01).onChange(v => { const m = getModels(); if (m.carModel) m.carModel.rotation.y = v; });
+    carFolder.add(guiSettings, 'carRotZ', -Math.PI, Math.PI, 0.01).onChange(v => { const m = getModels(); if (m.carModel) m.carModel.rotation.z = v; });
+    carFolder.add(guiSettings, 'carScale', 0.001, 2, 0.001).onChange(v => { const m = getModels(); if (m.carModel) m.carModel.scale.setScalar(v); });
 
     const passFolder = gui.addFolder('Passenger');
-    passFolder.add(guiSettings, 'passX', -5, 5, 0.01).onChange(v => { if (passengerModel) passengerModel.position.x = v; });
-    passFolder.add(guiSettings, 'passY', -5, 5, 0.01).onChange(v => { if (passengerModel) passengerModel.position.y = v; });
-    passFolder.add(guiSettings, 'passZ', -5, 5, 0.01).onChange(v => { if (passengerModel) passengerModel.position.z = v; });
-    passFolder.add(guiSettings, 'passRotX', -Math.PI, Math.PI, 0.01).onChange(v => { if (passengerModel) passengerModel.rotation.x = v; });
-    passFolder.add(guiSettings, 'passRotY', -Math.PI, Math.PI, 0.01).onChange(v => { if (passengerModel) passengerModel.rotation.y = v; });
-    passFolder.add(guiSettings, 'passRotZ', -Math.PI, Math.PI, 0.01).onChange(v => { if (passengerModel) passengerModel.rotation.z = v; });
-    passFolder.add(guiSettings, 'passScale', 0.1, 5, 0.01).onChange(v => { if (passengerModel) passengerModel.scale.setScalar(v); });
+    passFolder.add(guiSettings, 'passX', -5, 5, 0.01).onChange(v => { const m = getModels(); if (m.passengerModel) m.passengerModel.position.x = v; });
+    passFolder.add(guiSettings, 'passY', -5, 5, 0.01).onChange(v => { const m = getModels(); if (m.passengerModel) m.passengerModel.position.y = v; });
+    passFolder.add(guiSettings, 'passZ', -5, 5, 0.01).onChange(v => { const m = getModels(); if (m.passengerModel) m.passengerModel.position.z = v; });
+    passFolder.add(guiSettings, 'passRotX', -Math.PI, Math.PI, 0.01).onChange(v => { const m = getModels(); if (m.passengerModel) m.passengerModel.rotation.x = v; });
+    passFolder.add(guiSettings, 'passRotY', -Math.PI, Math.PI, 0.01).onChange(v => { const m = getModels(); if (m.passengerModel) m.passengerModel.rotation.y = v; });
+    passFolder.add(guiSettings, 'passRotZ', -Math.PI, Math.PI, 0.01).onChange(v => { const m = getModels(); if (m.passengerModel) m.passengerModel.rotation.z = v; });
+    passFolder.add(guiSettings, 'passScale', 0.1, 5, 0.01).onChange(v => { const m = getModels(); if (m.passengerModel) m.passengerModel.scale.setScalar(v); });
 
     const roadFolder = gui.addFolder('Road/Environment');
-    roadFolder.add(guiSettings, 'roadX', -500, 500, 0.1).onChange(v => { if (roadModel) roadModel.position.x = v; });
-    roadFolder.add(guiSettings, 'roadY', -100, 100, 0.1).onChange(v => { if (roadModel) roadModel.position.y = v; });
-    roadFolder.add(guiSettings, 'roadZ', -1000, 1000, 0.1).onChange(v => { if (roadModel) roadModel.position.z = v; });
-    roadFolder.add(guiSettings, 'roadRotX', -Math.PI, Math.PI, 0.01).onChange(v => { if (roadModel) roadModel.rotation.x = v; });
-    roadFolder.add(guiSettings, 'roadRotY', -Math.PI, Math.PI, 0.01).onChange(v => { if (roadModel) roadModel.rotation.y = v; });
-    roadFolder.add(guiSettings, 'roadRotZ', -Math.PI, Math.PI, 0.01).onChange(v => { if (roadModel) roadModel.rotation.z = v; });
-    roadFolder.add(guiSettings, 'roadScale', 0.001, 20, 0.001).onChange(v => { if (roadModel) roadModel.scale.setScalar(v); });
+    roadFolder.add(guiSettings, 'roadX', -500, 500, 0.1).onChange(v => { const m = getModels(); if (m.roadModel) m.roadModel.position.x = v; });
+    roadFolder.add(guiSettings, 'roadY', -100, 100, 0.1).onChange(v => { const m = getModels(); if (m.roadModel) m.roadModel.position.y = v; });
+    roadFolder.add(guiSettings, 'roadZ', -1000, 1000, 0.1).onChange(v => { const m = getModels(); if (m.roadModel) m.roadModel.position.z = v; });
+    roadFolder.add(guiSettings, 'roadRotX', -Math.PI, Math.PI, 0.01).onChange(v => { const m = getModels(); if (m.roadModel) m.roadModel.rotation.x = v; });
+    roadFolder.add(guiSettings, 'roadRotY', -Math.PI, Math.PI, 0.01).onChange(v => { const m = getModels(); if (m.roadModel) m.roadModel.rotation.y = v; });
+    roadFolder.add(guiSettings, 'roadRotZ', -Math.PI, Math.PI, 0.01).onChange(v => { const m = getModels(); if (m.roadModel) m.roadModel.rotation.z = v; });
+    roadFolder.add(guiSettings, 'roadScale', 0.001, 20, 0.001).onChange(v => { const m = getModels(); if (m.roadModel) m.roadModel.scale.setScalar(v); });
 
     const toolsFolder = gui.addFolder('Developer Tools');
     toolsFolder.add(guiSettings, 'showLabels').name('Show Mesh Names').onChange(v => {
-        if (roadModel) {
-            roadModel.traverse(child => {
+        const m = getModels();
+        if (m.roadModel) {
+            m.roadModel.traverse(child => {
                 if (child.name === "DebugLabel") child.visible = v;
             });
         }
     });
 
     const userFolder = gui.addFolder('User (Driver) Spawn');
-    userFolder.add(guiSettings, 'userX', -5, 5, 0.01).onChange(v => { if (cameraRig) cameraRig.position.x = v; if (userSpawnHelper) userSpawnHelper.position.x = v; });
-    userFolder.add(guiSettings, 'userY', -5, 5, 0.01).onChange(v => { if (cameraRig) cameraRig.position.y = v; if (userSpawnHelper) userSpawnHelper.position.y = v; });
-    userFolder.add(guiSettings, 'userZ', -5, 5, 0.01).onChange(v => { if (cameraRig) cameraRig.position.z = v; if (userSpawnHelper) userSpawnHelper.position.z = v; });
-    userFolder.add(guiSettings, 'showUserSpawn').name('Show Spawn Marker').onChange(v => { if (userSpawnHelper) userSpawnHelper.visible = v; });
+    userFolder.add(guiSettings, 'userX', -5, 5, 0.01).onChange(v => { const m = getModels(); if (m.cameraRig) m.cameraRig.position.x = v; if (m.userSpawnHelper) m.userSpawnHelper.position.x = v; });
+    userFolder.add(guiSettings, 'userY', -5, 5, 0.01).onChange(v => { const m = getModels(); if (m.cameraRig) m.cameraRig.position.y = v; if (m.userSpawnHelper) m.userSpawnHelper.position.y = v; });
+    userFolder.add(guiSettings, 'userZ', -5, 5, 0.01).onChange(v => { const m = getModels(); if (m.cameraRig) m.cameraRig.position.z = v; if (m.userSpawnHelper) m.userSpawnHelper.position.z = v; });
+    userFolder.add(guiSettings, 'showUserSpawn').name('Show Spawn Marker').onChange(v => { const m = getModels(); if (m.userSpawnHelper) m.userSpawnHelper.visible = v; });
 
     const incomingFolder = gui.addFolder('Incoming Accident Vehicle');
     incomingFolder.add(guiSettings, 'incStartTime', 0, 60, 0.1).name('Start Time (s)');

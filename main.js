@@ -177,8 +177,8 @@ function init() {
     window.addEventListener('resize', onWindowResize);
 
     // GUI Setup from separate UI Manager module
-    const models = { carModel, passengerModel, roadModel, cameraRig, userSpawnHelper };
-    const gui = createTherapistGUI(guiSettings, models);
+    const getModels = () => ({ carModel, passengerModel, roadModel, cameraRig, userSpawnHelper });
+    const gui = createTherapistGUI(guiSettings, getModels);
 
     // VR Controller Events - binding to both indices just in case (left/right order depends on power-on sequence)
     for (let i = 0; i < 2; i++) {

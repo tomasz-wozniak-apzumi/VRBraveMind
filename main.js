@@ -447,6 +447,11 @@ function render() {
         if (endText) endText.style.display = 'none';
     }
 
-    if (mixer) mixer.update(Math.abs(delta)); // animation remains forward tracking even if reverse physics speed
+    if (mixer) {
+        // Zamiast odtwarzać klatki ciągle do przodu (update), 
+        // wymuszamy na animacji konkretną klatkę z naszego matematycznego zegara.
+        // Dzięki temu oddychanie/ruchy cofną się bezbłędnie podczas Rewindu!
+        mixer.setTime(Math.max(0, t));
+    }
     renderer.render(scene, camera);
 }

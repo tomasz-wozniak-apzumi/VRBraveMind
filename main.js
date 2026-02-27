@@ -20,7 +20,8 @@ const guiSettings = {
     passX: 0.6, passY: 1.93, passZ: 1.19, passScale: 1,
     passRotX: 0, passRotY: 3.141592, passRotZ: 0,
     roadX: 0, roadY: -3.3, roadZ: 0, roadScale: 3,
-    roadRotX: 0, roadRotY: 0, roadRotZ: 0
+    roadRotX: 0, roadRotY: 0, roadRotZ: 0,
+    showLabels: false
 };
 
 init();
@@ -120,6 +121,32 @@ function init() {
         roadModel.rotation.set(guiSettings.roadRotX, guiSettings.roadRotY, guiSettings.roadRotZ);
         roadModel.scale.setScalar(guiSettings.roadScale);
 
+        // Skrypt debugujący dla wyciągnięcia nazw obiektów (nad obiektami jako chmurki tekstowe)
+        roadModel.traverse((child) => {
+            if (child.isMesh && child.name) {
+                const canvas = document.createElement('canvas');
+                canvas.width = 512;
+                canvas.height = 128;
+                const context = canvas.getContext('2d');
+                context.font = "Bold 40px Arial";
+                context.fillStyle = "rgba(0, 255, 0, 1.0)"; // Jaskrawy zielony napis
+                context.strokeStyle = "black";
+                context.lineWidth = 5;
+                context.strokeText(child.name, 10, 60);
+                context.fillText(child.name, 10, 60);
+
+                const texture = new THREE.CanvasTexture(canvas);
+                // depthTest: false upewnia się, że napisy prześwitują przez budynki, więc łatwo je znaleźć na całej mapie
+                const spriteMaterial = new THREE.SpriteMaterial({ map: texture, depthTest: false });
+                const sprite = new THREE.Sprite(spriteMaterial);
+                sprite.scale.set(6, 1.5, 1);
+                sprite.position.set(0, 2, 0); // Lekko powyżej oryginalnego mesha
+                sprite.visible = guiSettings.showLabels;
+                sprite.name = "DebugLabel";
+                child.add(sprite);
+            }
+        });
+
         scene.add(roadModel);
     }, undefined, function (e) {
         console.error(e);
@@ -161,6 +188,15 @@ function init() {
     roadFolder.add(guiSettings, 'roadRotY', -Math.PI, Math.PI, 0.01).onChange(v => { if (roadModel) roadModel.rotation.y = v; });
     roadFolder.add(guiSettings, 'roadRotZ', -Math.PI, Math.PI, 0.01).onChange(v => { if (roadModel) roadModel.rotation.z = v; });
     roadFolder.add(guiSettings, 'roadScale', 0.001, 20, 0.001).onChange(v => { if (roadModel) roadModel.scale.setScalar(v); });
+
+    const toolsFolder = gui.addFolder('Developer Tools');
+    toolsFolder.add(guiSettings, 'showLabels').name('Show Mesh Names').onChange(v => {
+        if (roadModel) {
+            roadModel.traverse(child => {
+                if (child.name === "DebugLabel") child.visible = v;
+            });
+        }
+    });
 }
 
 function setupAudio(targetObj) {

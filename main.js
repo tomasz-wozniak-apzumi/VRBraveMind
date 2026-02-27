@@ -20,16 +20,16 @@ let tinnitusActive = false;
 const speed = 15;
 
 const guiSettings = {
-    carX: 0.9, carY: 1.4, carZ: -3.28, carScale: 0.03,
-    carRotX: 1.598407, carRotY: 3.141592, carRotZ: 0.288407,
-    passX: 0.6, passY: 1.93, passZ: 1.19, passScale: 1,
+    carX: 1.4, carY: -1.56, carZ: -3.28, carScale: 0.03,
+    carRotX: 1.498407, carRotY: 3.141592, carRotZ: -0.00159,
+    passX: -0.16, passY: -0.78, passZ: 0.94, passScale: 1.15,
     passRotX: 0, passRotY: 3.141592, passRotZ: 0,
     roadX: 0, roadY: -3.3, roadZ: 0, roadScale: 3,
     roadRotX: 0, roadRotY: 0, roadRotZ: 0,
-    userX: 0.4, userY: 1.2, userZ: -0.2,
-    showUserSpawn: true,
+    userX: 0.33, userY: -0.41, userZ: 0.82,
+    showUserSpawn: false, // Turned off by default so the red sphere does not obstruct patient view
     showLabels: false,
-    playScenario: true,
+    playScenario: false, // Started paused for safety as requested by "Play / Pause" unchecked
     scenarioSpeed: 1.0,
     resetScenario: () => {
         scenarioState = 'NEUTRAL';

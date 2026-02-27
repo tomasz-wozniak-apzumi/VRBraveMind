@@ -8,10 +8,15 @@ import GUI from 'lil-gui';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 let camera, scene, renderer;
-let carGroup, passengerModel, carModel, roadModel;
+let carGroup, passengerModel, carModel, roadModel, incomingCarGroup;
 let grid;
 let clock = new THREE.Clock();
 let mixer;
+let audioListenerGlobal;
+let scenarioState = 'NEUTRAL';
+let scenarioTimer = 0;
+let accidentSpin = 0;
+let tinnitusActive = false;
 const speed = 15;
 
 const guiSettings = {
@@ -35,11 +40,21 @@ function init() {
     scene.background = new THREE.Color(0x88ccee);
     scene.fog = new THREE.Fog(0x88ccee, 10, 500);
 
+    carGroup = new THREE.Group();
+    scene.add(carGroup);
+
     camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
     const cameraRig = new THREE.Group();
-    scene.add(cameraRig);
+    carGroup.add(cameraRig); // Wrap camera into car for synchronized spin during accident
     cameraRig.add(camera);
     cameraRig.position.set(0.4, 1.2, -0.2);
+
+    audioListenerGlobal = new THREE.AudioListener();
+    camera.add(audioListenerGlobal);
+
+    incomingCarGroup = new THREE.Group();
+    incomingCarGroup.position.set(50, 0, -100); // Hidden / far away initially
+    scene.add(incomingCarGroup);
 
     const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 1.5);
     hemiLight.position.set(0, 200, 0);
@@ -81,9 +96,6 @@ function init() {
     const tgaLoader = new TGALoader(loadingManager);
     loadingManager.addHandler(/\.tga$/i, tgaLoader);
 
-    carGroup = new THREE.Group();
-    scene.add(carGroup);
-
     const fbxLoader = new FBXLoader(loadingManager);
     fbxLoader.load('/models3d/32-mercedes-benz-gls-580-2020/uploads_files_2787791_Mercedes+Benz+GLS+580.fbx', function (fbx) {
         carModel = fbx;
@@ -91,6 +103,9 @@ function init() {
         carModel.rotation.set(guiSettings.carRotX, guiSettings.carRotY, guiSettings.carRotZ);
         carModel.scale.setScalar(guiSettings.carScale);
         carGroup.add(carModel);
+
+        const clonedIncoming = carModel.clone();
+        incomingCarGroup.add(clonedIncoming);
     }, undefined, function (e) {
         console.error(e);
     });
@@ -200,13 +215,10 @@ function init() {
 }
 
 function setupAudio(targetObj) {
-    const listener = new THREE.AudioListener();
-    camera.add(listener);
-
-    const sound = new THREE.PositionalAudio(listener);
-    const oscillator = listener.context.createOscillator();
+    const sound = new THREE.PositionalAudio(audioListenerGlobal);
+    const oscillator = audioListenerGlobal.context.createOscillator();
     oscillator.type = 'sine';
-    oscillator.frequency.setValueAtTime(440, listener.context.currentTime);
+    oscillator.frequency.setValueAtTime(440, audioListenerGlobal.context.currentTime);
     oscillator.start(0);
 
     sound.setNodeSource(oscillator);
@@ -216,8 +228,8 @@ function setupAudio(targetObj) {
     targetObj.add(sound);
 
     window.addEventListener('pointerdown', () => {
-        if (listener.context.state === 'suspended') {
-            listener.context.resume();
+        if (audioListenerGlobal.context.state === 'suspended') {
+            audioListenerGlobal.context.resume();
         }
         setInterval(() => {
             if (sound.getVolume() > 0) return;
@@ -225,6 +237,29 @@ function setupAudio(targetObj) {
             setTimeout(() => sound.setVolume(0), 1000);
         }, 3000);
     }, { once: true });
+}
+
+function triggerTinnitus() {
+    if (tinnitusActive || !audioListenerGlobal) return;
+    tinnitusActive = true;
+
+    const context = audioListenerGlobal.context;
+    if (context.state === 'suspended') context.resume();
+
+    const osc = context.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(6000, context.currentTime);
+
+    const gainNode = context.createGain();
+    gainNode.gain.setValueAtTime(0, context.currentTime);
+    gainNode.gain.linearRampToValueAtTime(0.3, context.currentTime + 0.1); // Sudden hit
+    gainNode.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 10); // Fade 10s
+
+    osc.connect(gainNode);
+    gainNode.connect(context.destination);
+
+    osc.start();
+    osc.stop(context.currentTime + 10);
 }
 
 function onWindowResize() {
@@ -239,19 +274,51 @@ function animate() {
 
 function render() {
     const delta = clock.getDelta();
-    if (grid) {
-        grid.position.z += speed * delta;
+    scenarioTimer += delta;
+    let currentSpeed = speed;
+
+    if (scenarioState === 'NEUTRAL' && scenarioTimer > 10) {
+        scenarioState = 'ACCIDENT';
+        if (incomingCarGroup) {
+            // Pos incoming car on the right
+            incomingCarGroup.position.set(20, 0, -60);
+            incomingCarGroup.rotation.y = -Math.PI / 4;
+        }
+    }
+
+    if (scenarioState === 'ACCIDENT') {
+        if (incomingCarGroup) {
+            incomingCarGroup.position.x -= 20 * delta; // Drives left towards us
+            incomingCarGroup.position.z += 25 * delta; // Drives towards camera
+
+            if (incomingCarGroup.position.x < 1.0) { // Crash point
+                scenarioState = 'POST_ACCIDENT';
+                accidentSpin = 8;
+                triggerTinnitus();
+            }
+        }
+    }
+
+    if (scenarioState === 'POST_ACCIDENT') {
+        currentSpeed = speed * 0.1; // Slow down drastically
+        if (accidentSpin > 0) {
+            carGroup.rotation.y += accidentSpin * delta; // Uncontrolled spin
+            accidentSpin -= 5 * delta;
+            if (accidentSpin < 0) accidentSpin = 0;
+            carGroup.position.x -= 2 * delta;
+            carGroup.position.z -= 4 * delta;
+        } else {
+            currentSpeed = 0; // Absolute stop
+        }
+    }
+
+    if (grid && currentSpeed > 0) {
+        grid.position.z += currentSpeed * delta;
         if (grid.position.z > 10) grid.position.z -= 10;
     }
-    if (roadModel) {
-        // Pseudo driving motion: moving city environment backwards
-        roadModel.position.z += speed * delta;
-
-        // Very basic simple loop: if city drives too far back, reset it 
-        // to keep impression of continuous forward movement. (Value '300' is arbitrary and needs tweaking on scale).
-        if (roadModel.position.z > 300) {
-            roadModel.position.z = 0;
-        }
+    if (roadModel && currentSpeed > 0) {
+        roadModel.position.z += currentSpeed * delta;
+        if (roadModel.position.z > 300) roadModel.position.z = 0;
     }
     if (mixer) {
         mixer.update(delta);

@@ -15,10 +15,10 @@ let mixer;
 const speed = 15;
 
 const guiSettings = {
-    carX: -0.82, carY: 0.41, carZ: 3.85, carScale: 0.03,
-    carRotX: 0, carRotY: 0, carRotZ: 0,
-    passX: 0.6, passY: 0.45, passZ: -0.1, passScale: 1,
-    passRotX: 0, passRotY: Math.PI, passRotZ: 0,
+    carX: 0.9, carY: 1.4, carZ: -3.28, carScale: 0.03,
+    carRotX: 1.598407, carRotY: 3.141592, carRotZ: 0.288407,
+    passX: 0.6, passY: 1.93, passZ: 1.19, passScale: 1,
+    passRotX: 0, passRotY: 3.141592, passRotZ: 0,
     roadX: -86.8, roadY: -8.2, roadZ: -102.3, roadScale: 2,
     roadRotX: 0, roadRotY: 0, roadRotZ: 0
 };

@@ -10,10 +10,11 @@ let camera, scene, renderer;
 let carGroup, passengerModel, carModel;
 let grid;
 let clock = new THREE.Clock();
+let mixer;
 const speed = 15;
 
 const guiSettings = {
-    carX: 0, carY: 0, carZ: 0, carScale: 0.01,
+    carX: -0.82, carY: 0.41, carZ: 3.85, carScale: 0.03,
     passX: 0.6, passY: 0.45, passZ: -0.1, passScale: 1
 };
 
@@ -81,7 +82,7 @@ function init() {
         console.error(e);
     });
 
-    loader.load('/models3d/ready_player_me_female_character.glb', function (gltf) {
+    loader.load('/models3d/ready_player_me_female_character_sittingLoop.glb', function (gltf) {
         passengerModel = gltf.scene;
 
         // Przesunięcie z panelu GUI
@@ -91,30 +92,14 @@ function init() {
         // Obrót postaci, aby patrzyła w stronę przedniej szyby
         passengerModel.rotation.y = Math.PI;
 
-        // Ręczny hack szkieletowy, by posadzić zrigowany model (Ready Player Me zachowuje standardowe nazewnictwo kości Mixamo)
-        passengerModel.traverse((child) => {
-            if (child.isBone) {
-                // Zgięcie bioder (uda w górę do przodu)
-                if (child.name.includes('UpLeg')) {
-                    child.rotation.x -= Math.PI / 2;
-                }
-                // Zgięcie kolan (łydki w dół)
-                if (child.name.includes('Leg') && !child.name.includes('Up')) {
-                    child.rotation.x += Math.PI / 2;
-                }
-                // Opadnięcie ramion wzdłuż tułowia w pozycji siedzącej
-                if (child.name.includes('Arm')) {
-                    child.rotation.z += Math.PI / 6;
-                }
-                // Dłonie na kolanach
-                if (child.name.includes('ForeArm')) {
-                    child.rotation.x -= Math.PI / 4;
-                }
-            }
-        });
-
         carGroup.add(passengerModel);
         setupAudio(passengerModel);
+
+        if (gltf.animations && gltf.animations.length > 0) {
+            mixer = new THREE.AnimationMixer(passengerModel);
+            const action = mixer.clipAction(gltf.animations[0]);
+            action.play();
+        }
     }, undefined, function (e) {
         console.error(e);
     });
@@ -185,6 +170,9 @@ function render() {
     if (grid) {
         grid.position.z += speed * delta;
         if (grid.position.z > 10) grid.position.z -= 10;
+    }
+    if (mixer) {
+        mixer.update(delta);
     }
     renderer.render(scene, camera);
 }
